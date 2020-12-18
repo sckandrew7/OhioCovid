@@ -17,7 +17,7 @@ def firstthings():
         censustractx.append(float(x))
         censustracty.append(float(y))
     file.close()
-    theogplot = plt.scatter(censustractx, censustracty, color="orange")
+    theogplot = plt.scatter(censustracty, censustractx, color="orange")
     file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/podlatlong.csv") #open A.txt
     podx = []
     pody = []
@@ -29,7 +29,7 @@ def firstthings():
         pody.append(float(y))
     file.close()
 
-    theogplot = plt.scatter(podx, pody)
+    theogplot = plt.scatter(pody, podx)
     plt.show()
 
 #get pop and vul data
