@@ -29,7 +29,7 @@ def firstthings():
         pody.append(float(y))
     file.close()
 
-    theogplot = plt.scatter(podx, pody)
+    theogplot = plt.scatter(pody, podx)
     plt.show()
 
 #get pop and vul data
