@@ -4,6 +4,7 @@ import sys
 import os
 import random
 import math
+import re
 
 
 def firstthings():
@@ -39,12 +40,12 @@ def firstthings():
     #get pop and vul data
     tractpop = []
     tractvul = []
-    file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/censustract2010popvul.csv")
+    file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/censustract2020popvul.csv")
     for lines in file:
         lines = lines.replace('\t', ',').strip()
         lines = lines.replace(' ', ',')
         x, y = lines.split(',')
-        tractpop.append(float(x))
+        tractpop.append(float(re.sub('[^0-9]','',x)))
         tractvul.append(float(y))
     file.close()
     
