@@ -3,6 +3,7 @@
 The csvs of only lat/long are labeled for who they belong to.
 
 Helpful links:
+2020 population: https://www2.census.gov/geo/docs/reference/2020addresscountlist/39_Ohio_AddressBlockCountList_012020.txt
 https://www.cdc.gov/coronavirus/2019-ncov/covid-data/covidview/index.html
 http://opportunityindex.org/wp-content/uploads/2020/08/2019-Opportunity-Index-Technical-Supplement.pdf
 https://www.cdc.gov/coronavirus/2019-ncov/covid-data/investigations-discovery/hospitalization-death-by-age.html
