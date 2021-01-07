@@ -9,6 +9,7 @@ import re
 
 def firstthings():
     '''Get data from files'''
+    #latlong of census tracts
     file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/censuslatlong.csv") #open census lat/long only
     censustractlat = []
     censustractlong = []
@@ -20,6 +21,8 @@ def firstthings():
         censustractlong.append(float(y))
     file.close()
     theogplot = plt.scatter(censustractlong, censustractlat, color="orange")
+    
+    #latlong of PODs
     file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/podlatlong.csv") #open pods lat/long only
     podlat = []
     podlong = []
@@ -37,7 +40,7 @@ def firstthings():
     plt.title('Census Tract Centers (Orange) and PODs (Blue)')
     plt.show()
 
-    #get pop and vul data
+    #get population and vulnerable counts from census data
     tractpop = []
     tractvul = []
     file = open("/Users/kenyaandrews/Desktop/ResearchUIC/Fall2020/covid/censustract2020popvul.csv")
@@ -48,7 +51,8 @@ def firstthings():
         tractpop.append(float(re.sub('[^0-9]','',x)))
         tractvul.append(float(y))
     file.close()
-    
+    print(tractpop, tractvul)
+
     '''ASSIGN THE CLOSEST PODs'''
     closestpodcensuslat = []
     closestpodcensuslong = []
@@ -95,6 +99,7 @@ def firstthings():
     #bias
     eta = numpy.arange(0.0, 1.1, 0.1)
     
+    
     #calculate percent vul
     percentvul = [] #Beta
     for i in range(len(tractpop)):
@@ -102,15 +107,36 @@ def firstthings():
 
     #Number of vaccines for population tract
     N = [j * 0.6 for j in tractpop]
-    
-    #calculate Vaccination Disparity Vulnerable and Non-Vulnerable Rate = star
+
+    #calculate Vaccination Disparity Vulnerable and Non-Vulnerable Rate => star
     star = [] #Vaccination Disparity Vulnerable and Non-Vulnerable Rate
-    vulnerablestar = nonvulnerablestar = 0
+    nonvulrate = []
+    #linev = [0.6-0.6*j for j in eta]
     for i in range(len(eta)):
+        vulnerablestar = nonvulnerablestar = 0.0
+        numbervul = 0.0
+        numbernonvul = 0.0
         for j in range(len(tractpop)):
-            vulnerablestar += ((percentvul[j]*eta[i]*N[j])/(percentvul[j]*eta[i]+1-percentvul[j]))/(percentvul[j]*tractpop[j])
-            nonvulnerablestar += (((1-percentvul[j])*N[j])/(percentvul[j]*eta[i]+1-percentvul[j]))/((1-percentvul[j])*tractpop[j])
-        star.append(-vulnerablestar + nonvulnerablestar)
+            x=(percentvul[j]*eta[i])/(percentvul[j]*eta[i]+1-percentvul[j])
+            vulnerablestar += x*N[j]
+            
+            numbervul += percentvul[j]*tractpop[j]
+            y=(1-percentvul[j])/(percentvul[j]*eta[i]+1-percentvul[j])
+            nonvulnerablestar += y*N[j]
+            
+            numbernonvul += (1-percentvul[j])*tractpop[j]
+            #print((x+y))
+        
+        nonvulrate.append(nonvulnerablestar/numbernonvul)
+        star.append(-vulnerablestar/numbervul + nonvulnerablestar/numbernonvul)
+    
+    #print(star[0])
+    #print(eta)
+    #print(nonvulrate[0])
+    #print(len([N[j]/tractpop[j] for j in range(len(tractpop))]))
+    #print(percentvul)
+    print(numbernonvul/(numbernonvul+numbervul))
+    print(0.6/(numbernonvul/(numbernonvul+numbervul)))
     
     #plot Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate
     starplot = plt.plot(eta, star)
