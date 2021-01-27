@@ -105,9 +105,9 @@ def firstthings():
     percentvul = [] #Beta
     for i in range(len(tractpop)):
         percentvul.append(tractvul[i]/tractpop[i]) #CALCULATE BETA(percentage vulnerable)
-
+    alpha = 0.6
     #Number of vaccines for population tract
-    N = [j * 0.6 for j in tractpop]
+    N = [j * alpha for j in tractpop]
 
     #calculate Vaccination Disparity Vulnerable and Non-Vulnerable Rate => star
     #Calculate Hospitalization Rate Vul vs Non-Vul => doublestar
@@ -118,10 +118,12 @@ def firstthings():
     #linev = [0.6-0.6*j for j in eta]
     gamma = 0
     n_i= c_i = 0
+    c_iarray = numpy.zeros((len(tractpop),1))
     epsilon = 0.1
     l1_bound = 0
     totalpop = sum(tractpop)
-    totalVaccines = sum(N)
+    
+    totalVaccines = alpha*totalpop
     for i in range(len(eta)):
         vulnerablestar = nonvulnerablestar = 0.0
         numbervul = 0.0
@@ -138,9 +140,9 @@ def firstthings():
             numbernonvul += (1-percentvul[j])*tractpop[j]
             #print((x+y))
             gamma += numbervul/totalpop
-            n_i= (N[j]/0.6)/totalVaccines
+            n_i= (N[j]/alpha)/totalVaccines
             c_i= tractpop[j]/totalpop
-            
+            c_iarray[j] = c_i
             #minimize CNvrd
             l1_bound += abs(n_i- c_i)
             CNvrd = ((-1/gamma)*(-vulnerablestar/numbervul)*n_i) + (((1-(1-gamma))* nonvulnerablestar/numbernonvul)*n_i)
@@ -166,17 +168,19 @@ def firstthings():
     '''END TESTS'''
     
     #plot Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate
-    starplot = plt.plot(eta, star)
+    fig1, starplot = plt.subplots()
+    starplot.plot(eta, star)
     plt.xlabel('Eta')
     plt.ylabel('Disparity Value (Vulnerable vs Non-Vulnerable)')
     plt.title('Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate')
-    plt.show()
+    #plt.show()
     
-    starplot = plt.plot(eta, doublestar)
+    fig2, doublestarplot = plt.subplots()
+    doublestarplot.plot(eta, star)
     plt.xlabel('Eta')
     plt.ylabel('Expected Hospitalization Rate Disparity')
     plt.title('Varying Eta vs Expected Hospitalization Rate Disparity')
-    plt.show()
+    #plt.show()
   
     k = len(tractpop)
     #get A
@@ -198,17 +202,11 @@ def firstthings():
     for i in range(int(round(A.shape[1]/2)),):
         A[A.shape[0]-1][i+int(round(A.shape[1]/2))] = 1
     
-    #get c for b
-    cVul = numpy.zeros( (k, 1) )
-    cNonVul = 1 - cVul
     
-    c = (-(1/gamma)*rho[5]) + ((1/(1-gamma))*(1-rho[5]))
-    c = c.reshape(k,1)
     #get b
     b = numpy.zeros( (3*k+1, 1) )
-    
-    b[:k] = c_i
-    b[k:2*k] = -c_i
+    b[:k] = c_iarray
+    b[k:2*k] = -c_iarray
     b[-1] = epsilon
     
     #get Aeq
@@ -216,24 +214,88 @@ def firstthings():
     
     for i in range(int(round(Aeq.shape[1]/2)),):
         Aeq[0][i+int(round(Aeq.shape[0]/2))] = 1
-    
+    print("Aeq", Aeq)
     c_ = numpy.zeros((2*k, 1))
     beq = numpy.zeros((1, 1))
     #set beq
     beq[0] = 1
+
+    
     #try the optimzation with scipy.linprog
     print("Optimzation: ")
-    c_[:k] = c
 
-    print("Size of c: ", c_.shape)
+    #print("Size of c: ", c_.shape)
     print("Size of A: ", A.shape)
     print("Size of b: ", b.shape)
     print("Size of beq: ", beq.shape)
     print("Size of Aeq: ", Aeq.shape)
+    
+    #get c
+    c = (-(1/gamma)*rho[5]) + ((1/(1-gamma))*(1-rho[5]))
+    c_ = numpy.zeros((2*k, 1))
+    c_[:k] = c.reshape(k,1)
+    
     res = linprog(c = c_, A_ub=A, b_ub=b, A_eq = Aeq, b_eq = beq, options={"disp": True})
     #res = linprog(c = numpy.array(c_), A_ub=numpy.array(A), b_ub=numpy.array(b),A_eq = Aeq, b_eq = beq, options={"disp": True})
     #print(res)
+    print(res.x)
+    print("sum resx", sum(res.x[:k]))
+    x = numpy.zeros((2*k, 1))
+    x[:k] = c_iarray
+    '''
+    print("A*x", numpy.matmul(A,x)-b )
+    print("aeq*x", numpy.matmul(Aeq,x)-beq)
+    print("c_is", numpy.sum(c_iarray))
+    '''
     
+    #Number of vaccines for population tract
+     #N = [j * 0.6 for j in tractpop]
+
+     #calculate Vaccination Disparity Vulnerable and Non-Vulnerable Rate => star
+     #Calculate Hospitalization Rate Vul vs Non-Vul => doublestar
+    star = [] #Vaccination Disparity Vulnerable and Non-Vulnerable Rate
+    nonvulrate = []
+    doublestar = []
+    epsilon = 0.1
+    for i in range(len(eta)):
+         vulnerablestar = nonvulnerablestar = 0.0
+         numbervul = 0.0
+         numbernonvul = 0.0
+         #get c
+         c = (-(1/gamma)*rho[i]) + ((1/(1-gamma))*(1-rho[i]))
+         c_ = numpy.zeros((2*k, 1))
+         c_[:k] = c.reshape(k,1)
+         
+         res = linprog(c = c_, A_ub=A, b_ub=b, A_eq = Aeq, b_eq = beq, options={"disp": True})
+         N = res.x[:k]*totalVaccines
+         print("any less :", any(N<0))
+         for j in range(len(tractpop)):
+             x=(percentvul[j]*eta[i])/(percentvul[j]*eta[i]+1-percentvul[j]) #rho_i
+             
+             vulnerablestar += x*N[j] #rho_i * N_i
+             numbervul += percentvul[j]*tractpop[j] #beta_i * C_i
+             
+             y=(1-percentvul[j])/(percentvul[j]*eta[i]+1-percentvul[j])
+             nonvulnerablestar += y*N[j]
+             
+             numbernonvul += (1-percentvul[j])*tractpop[j]
+         
+         ehospitalvul = ((5*(numbervul-vulnerablestar)) + (0.5*vulnerablestar))
+         ehospitalnonvul = ((numbernonvul-nonvulnerablestar) + (0.1*nonvulnerablestar))
+         
+         nonvulrate.append(nonvulnerablestar/numbernonvul)
+         
+         
+         star.append(-vulnerablestar/numbervul + nonvulnerablestar/numbernonvul)
+         doublestar.append((ehospitalvul/numbervul)/(ehospitalnonvul/numbernonvul))
+
+
+    #plot Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate
+    starplot.plot(eta, star)
+    plt.show()
+
+    doublestarplot.plot(eta, doublestar)
+    plt.show()
 firstthings()
 
 
