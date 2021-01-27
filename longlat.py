@@ -114,6 +114,7 @@ def firstthings():
     star = [] #Vaccination Disparity Vulnerable and Non-Vulnerable Rate
     nonvulrate = []
     doublestar = []
+    rho = numpy.zeros((len(eta), len(tractpop)))
     #linev = [0.6-0.6*j for j in eta]
     gamma = 0
     n_i= c_i = 0
@@ -126,7 +127,8 @@ def firstthings():
         numbervul = 0.0
         numbernonvul = 0.0
         for j in range(len(tractpop)):
-            x=(percentvul[j]*eta[i])/(percentvul[j]*eta[i]+1-percentvul[j])
+            x=(percentvul[j]*eta[i])/(percentvul[j]*eta[i]+1-percentvul[j]) #rho_i
+            rho[i][j] = x
             vulnerablestar += x*N[j] #rho_i * N_i
             numbervul += percentvul[j]*tractpop[j] #beta_i * C_i
             
@@ -199,15 +201,15 @@ def firstthings():
     #get c for b
     cVul = numpy.zeros( (k, 1) )
     cNonVul = 1 - cVul
-    #epsilon = 2.7
-    #gamma = 45
     
-    c = (-(1/gamma)*cVul) + ((1/(1-gamma))*cNonVul)
+    c = (-(1/gamma)*rho[5]) + ((1/(1-gamma))*(1-rho[5]))
+    c = c.reshape(k,1)
     #get b
     b = numpy.zeros( (3*k+1, 1) )
-    b[:k] = c
-    b[k:2*k] = -c
-    b[b.shape[0]-1] = epsilon
+    
+    b[:k] = c_i
+    b[k:2*k] = -c_i
+    b[-1] = epsilon
     
     #get Aeq
     Aeq = numpy.zeros( (1, 2*k) )
@@ -216,20 +218,29 @@ def firstthings():
         Aeq[0][i+int(round(Aeq.shape[0]/2))] = 1
     
     c_ = numpy.zeros((2*k, 1))
+    beq = numpy.zeros((1, 1))
     #set beq
-    beq = 1
+    beq[0] = 1
     #try the optimzation with scipy.linprog
     print("Optimzation: ")
     c_[:k] = c
-    print(c_)
-    print(c_.shape)
-    x0_bounds = (None, epsilon)
-    x1_bounds = (epsilon, None)
+
     print("Size of c: ", c_.shape)
     print("Size of A: ", A.shape)
-    #res = linprog(c = c_, A_ub=A, b_ub=b, A_eq = Aeq, b_eq = beq, bounds=[x0_bounds, x1_bounds])
-    res = linprog(c = numpy.asarray(c_), A_ub=numpy.asarray(A), b_ub=numpy.asarray(b), A_eq = numpy.asarray(Aeq), b_eq = numpy.asarray(beq), bounds=[x0_bounds, x1_bounds])
-    print(res)
+    print("Size of b: ", b.shape)
+    print("Size of beq: ", beq.shape)
+    print("Size of Aeq: ", Aeq.shape)
+    res = linprog(c = c_, A_ub=A, b_ub=b, A_eq = Aeq, b_eq = beq, options={"disp": True})
+    #res = linprog(c = numpy.array(c_), A_ub=numpy.array(A), b_ub=numpy.array(b),A_eq = Aeq, b_eq = beq, options={"disp": True})
+    #print(res)
     
 firstthings()
+
+
+
+
+
+
+
+
 
