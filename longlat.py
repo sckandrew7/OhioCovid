@@ -5,6 +5,7 @@ import os
 import random
 import math
 import re
+from scipy.optimize import linprog
 
 
 def firstthings():
@@ -109,34 +110,58 @@ def firstthings():
     N = [j * 0.6 for j in tractpop]
 
     #calculate Vaccination Disparity Vulnerable and Non-Vulnerable Rate => star
+    #Calculate Hospitalization Rate Vul vs Non-Vul => doublestar
     star = [] #Vaccination Disparity Vulnerable and Non-Vulnerable Rate
     nonvulrate = []
+    doublestar = []
     #linev = [0.6-0.6*j for j in eta]
+    gamma = 0
+    n_i= c_i = 0
+    epsilon = 0.1
+    l1_bound = 0
+    totalpop = sum(tractpop)
+    totalVaccines = sum(N)
     for i in range(len(eta)):
         vulnerablestar = nonvulnerablestar = 0.0
         numbervul = 0.0
         numbernonvul = 0.0
         for j in range(len(tractpop)):
             x=(percentvul[j]*eta[i])/(percentvul[j]*eta[i]+1-percentvul[j])
-            vulnerablestar += x*N[j]
+            vulnerablestar += x*N[j] #rho_i * N_i
+            numbervul += percentvul[j]*tractpop[j] #beta_i * C_i
             
-            numbervul += percentvul[j]*tractpop[j]
             y=(1-percentvul[j])/(percentvul[j]*eta[i]+1-percentvul[j])
             nonvulnerablestar += y*N[j]
             
             numbernonvul += (1-percentvul[j])*tractpop[j]
             #print((x+y))
+            gamma += numbervul/totalpop
+            n_i= (N[j]/0.6)/totalVaccines
+            c_i= tractpop[j]/totalpop
+            
+            #minimize CNvrd
+            l1_bound += abs(n_i- c_i)
+            CNvrd = ((-1/gamma)*(-vulnerablestar/numbervul)*n_i) + (((1-(1-gamma))* nonvulnerablestar/numbernonvul)*n_i)
+        
+        ehospitalvul = ((5*(numbervul-vulnerablestar)) + (0.5*vulnerablestar))
+        ehospitalnonvul = ((numbernonvul-nonvulnerablestar) + (0.1*nonvulnerablestar))
         
         nonvulrate.append(nonvulnerablestar/numbernonvul)
+        
+        
         star.append(-vulnerablestar/numbervul + nonvulnerablestar/numbernonvul)
+        doublestar.append((ehospitalvul/numbervul)/(ehospitalnonvul/numbernonvul))
     
+    '''TESTING HERE'''
     #print(star[0])
+    #print("Lower Bound", l1_bound)
     #print(eta)
     #print(nonvulrate[0])
     #print(len([N[j]/tractpop[j] for j in range(len(tractpop))]))
     #print(percentvul)
-    print(numbernonvul/(numbernonvul+numbervul))
-    print(0.6/(numbernonvul/(numbernonvul+numbervul)))
+    #print(numbernonvul/(numbernonvul+numbervul))
+    #print(0.6/(numbernonvul/(numbernonvul+numbervul)))
+    '''END TESTS'''
     
     #plot Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate
     starplot = plt.plot(eta, star)
@@ -144,16 +169,67 @@ def firstthings():
     plt.ylabel('Disparity Value (Vulnerable vs Non-Vulnerable)')
     plt.title('Varying Eta vs Vaccination Disparity Vulnerable and Non-Vulnerable Rate')
     plt.show()
+    
+    starplot = plt.plot(eta, doublestar)
+    plt.xlabel('Eta')
+    plt.ylabel('Expected Hospitalization Rate Disparity')
+    plt.title('Varying Eta vs Expected Hospitalization Rate Disparity')
+    plt.show()
   
+    k = len(tractpop)
+    #get A
+    A = numpy.zeros( (3*k+1, 2*k) )
+    
+    counter = 0
+    row = len(A)
+    for i in range(k):
+        A[i][counter] = 1
+        A[i][counter+k] = -1
+        
+        A[i+k][counter] = -1
+        A[i+k][counter+k] = -1
+        
+        A[i+(2*k)][counter+k] = -1
+     
+        counter+=1
 
-
+    for i in range(int(round(A.shape[1]/2)),):
+        A[A.shape[0]-1][i+int(round(A.shape[1]/2))] = 1
+    
+    #get c for b
+    cVul = numpy.zeros( (k, 1) )
+    cNonVul = 1 - cVul
+    #epsilon = 2.7
+    #gamma = 45
+    
+    c = (-(1/gamma)*cVul) + ((1/(1-gamma))*cNonVul)
+    #get b
+    b = numpy.zeros( (3*k+1, 1) )
+    b[:k] = c
+    b[k:2*k] = -c
+    b[b.shape[0]-1] = epsilon
+    
+    #get Aeq
+    Aeq = numpy.zeros( (1, 2*k) )
+    
+    for i in range(int(round(Aeq.shape[1]/2)),):
+        Aeq[0][i+int(round(Aeq.shape[0]/2))] = 1
+    
+    c_ = numpy.zeros((2*k, 1))
+    #set beq
+    beq = 1
+    #try the optimzation with scipy.linprog
+    print("Optimzation: ")
+    c_[:k] = c
+    print(c_)
+    print(c_.shape)
+    x0_bounds = (None, epsilon)
+    x1_bounds = (epsilon, None)
+    print("Size of c: ", c_.shape)
+    print("Size of A: ", A.shape)
+    #res = linprog(c = c_, A_ub=A, b_ub=b, A_eq = Aeq, b_eq = beq, bounds=[x0_bounds, x1_bounds])
+    res = linprog(c = numpy.asarray(c_), A_ub=numpy.asarray(A), b_ub=numpy.asarray(b), A_eq = numpy.asarray(Aeq), b_eq = numpy.asarray(beq), bounds=[x0_bounds, x1_bounds])
+    print(res)
+    
 firstthings()
-
-
-
-
-
-
-
-
 
